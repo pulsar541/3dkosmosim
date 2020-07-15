@@ -1,0 +1,734 @@
+
+GLuint fogMode[] = 
+{ GL_EXP, GL_EXP2, GL_LINEAR 
+}; // Хранит три типа тумана 
+GLuint fogfilter = 2; // Тип используемого тумана 
+GLfloat fogColor[4] = 
+{ 0.5f, 0.5f, 0.5f, 1.0f 
+}; // Цвет тумана 
+int a; 
+double mv[16],pm[16]; 
+int vp[4]; 
+double winx1,winy1,winz1; 
+double winx2,winy2,winz2; 
+bool zasv; 
+void MyPerspective ( double FOV,double nearz,int farz) 
+{ 
+   glViewport ( 0,0,SSX,SSY); // новый размер окна 
+   glMatrixMode ( GL_PROJECTION); // выбор матрицы проекций (камеры) 
+   glLoadIdentity (); 
+   gluPerspective(FOV, 
+   ( float)SSX / ( float)SSY, 
+   nearz, 
+   farz); 
+   glMatrixMode ( GL_MODELVIEW); // выбор матрицы модели 
+} 
+
+void Laser(double x0,double y0,double z0, 
+double x1,double y1,double z1) 
+{ 
+   glDisable(GL_LIGHTING); 
+   glEnable(GL_BLEND); 
+   glBegin(GL_QUADS); 
+   glColor3f(0,0,0); 
+   glVertex3d(x0,y0,z0); 
+   glVertex3d(x1,y1,z1); 
+   glColor3f(1,0,0); 
+   glVertex3d(x1 + minirand() - 0.4,y1 + minirand() - 0.4,z1 + minirand() - 0.4); 
+   glVertex3d(x0 + minirand() - 0.4,y0 + minirand() - 0.4,z0 + minirand() - 0.4); 
+   glColor3f(1,1,1); 
+   glVertex3d(x0,y0,z0); 
+   glVertex3d(x1,y1,z1); 
+   glColor3f(1,0,0); 
+   glVertex3d(x1 - minirand() - 0.4,y1 - minirand() - 0.4,z1 - minirand() - 0.4); 
+   glVertex3d(x0 - minirand() - 0.4,y0 - minirand() - 0.4,z0 - minirand() - 0.4); 
+   glColor4f(0.2,0,0,0.2); 
+   glVertex3d(x0,y0,z0); 
+   glVertex3d(x1,y1,z1); 
+   glVertex3d(x1 + 5*minirand() - 2,y1 + 5*minirand() - 2,z1 + 5*minirand() - 2); 
+   glVertex3d(x0 + 5*minirand() - 2,y0 + 5*minirand() - 2,z0 + 5*minirand() - 2); 
+   glColor4f(0.5,0,0,0.1); 
+   glVertex3d(x0,y0,z0); 
+   glVertex3d(x1,y1,z1); 
+   glVertex3d(x1 - 3*minirand() - 1.5,y1 - 3*minirand() + 1.5,z1 - 3*minirand() - 1.5); 
+   glVertex3d(x0 - 3*minirand() - 1.5,y0 - 3*minirand() + 1.5,z0 - 3*minirand() - 1.5); 
+   /* 
+   glColor3f(1,1,1); 
+   glVertex3d(x0,y0,z0); 
+   glVertex3d(x1,y1,z1); 
+   glVertex3d(x1 - minirand() + 0.5,y1 - minirand() + 0.5,z1 - minirand() + 0.5); 
+   glVertex3d(x0 - minirand() + 0.5,y0 - minirand() + 0.5,z0 - minirand() + 0.5); 
+   */ 
+   glEnd(); 
+   glDisable(GL_BLEND); 
+   glEnable(GL_LIGHTING); 
+} 
+void Doctor(double x0,double y0,double z0, 
+double x1,double y1,double z1) 
+{ 
+   glDisable(GL_LIGHTING); 
+   glEnable(GL_BLEND); 
+   glBegin(GL_QUADS); 
+   glColor3f(0,1,0); 
+   glVertex3d(x0,y0,z0); 
+   glColor3f(1,1,1); 
+   glVertex3d(x1,y1,z1); 
+   glVertex3d(x1 + minirand(),y1 + minirand(),z1 + minirand()); 
+   glColor3f(0,1,0); 
+   glVertex3d(x0 + minirand(),y0 + minirand(),z0 + minirand()); 
+   glEnd(); 
+   glDisable(GL_BLEND); 
+   glEnable(GL_LIGHTING); 
+} 
+void CalcTraectory(PLANET *a) 
+{ 
+   a -> sch ++; 
+   a -> p[a -> i].x = a -> x; 
+   a -> p[a -> i].y = a -> y; 
+   a -> p[a -> i].z = a -> z; 
+   if ( mapmode) 
+   { 
+      a -> colortraectory[0] = a -> colorplanet[0] * 0.2; 
+      a -> colortraectory[1] = a -> colorplanet[1] * 0.2; 
+      a -> colortraectory[2] = a -> colorplanet[2] * 0.2; 
+   } 
+   else 
+   { 
+      a -> colortraectory[0] = 0; 
+      a -> colortraectory[1] = 0; 
+      a -> colortraectory[2] = 0.1; 
+   } 
+   for ( int j = a -> i;j > a -> k - 1;j -- ) 
+   { 
+      if ( a -> NUM >= GIANTSCOUNT) 
+      { 
+         a -> p[j].x += body[a -> KOMU].dx; 
+         a -> p[j].y += body[a -> KOMU].dy; 
+         a -> p[j].z += body[a -> KOMU].dz; 
+      } 
+   } 
+   switch ( a -> NUM < GIANTSCOUNT) 
+   { 
+      case 1 : if ( a -> sch > DETAL_TRAECT1) 
+      { 
+         if ( a -> i ++> 500 ) 
+         a -> k ++; 
+         a -> sch = 0; 
+      } 
+      break; 
+      case 0 : if ( a -> sch > DETAL_TRAECT2 && DISTANCE(a,b[a -> KOMU]) < 5000) 
+      { a -> sch = 0; 
+         if ( a -> i ++> 500 ) 
+         a -> k ++; 
+         if ( a -> i > 6000 ) 
+         a -> k = a -> i = 0; 
+      } 
+      break; 
+   } 
+   //  if(a->NUM<GIANTSCOUNT) 
+   //  { 
+   //  if(a->i>500)   
+   //   a->k++; 
+   //  } 
+   //  else 
+   //  { 
+   //  if(a->i>1000)   
+   //   a->k++; 
+   //  } 
+   //  } 
+   if ( a -> i == 6000 ) 
+   a -> i = 0; 
+   if ( a -> NUM >= GIANTSCOUNT && DISTANCE(a,b[a -> KOMU]) > 5000) 
+   DELETE_PLANET(a); 
+} 
+void ShowSpaceClouds() 
+{ 
+   glPushMatrix(); 
+   glTranslated(myship -> x,myship -> y,myship -> z); 
+   // glDisable(GL_BLEND); 
+   glEnable(GL_BLEND); 
+   glDisable(GL_LIGHTING); 
+   glEnable(GL_TEXTURE_2D); 
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 
+   tex_image[0] -> sizeX, 
+   tex_image[0] -> sizeY, 
+   0, GL_RGB, GL_UNSIGNED_BYTE, 
+   tex_image[0] -> data); 
+   glColor4f(ro * 0.2,go * 0.2,bo * 0.2,1); 
+   gluSphere ( qobj, 4000000, 20, 20); 
+   glPopMatrix(); 
+   glDisable ( GL_TEXTURE_2D); 
+   glEnable(GL_LIGHTING); 
+   glPopMatrix(); 
+} 
+void ShowPlanetOrbit(PLANET *a) 
+{ glPushMatrix(); 
+   //glLoadIdentity(); 
+   //glColor3f(1,1,1); 
+   double temp = DISTANCE(a,b[0]); 
+   glScalef(temp,temp,1); 
+   if ( mapmode) 
+   { glColor3f(0.1,0.1,0.3); 
+      glCallList(RING + 1); 
+   } 
+   /* else 
+   { glColor3f(0.2,0.2,0.6); 
+      glCallList(RING); 
+   } 
+   */ 
+   glPopMatrix(); 
+} 
+void ShowTraectory(PLANET *a) 
+{ 
+   glDisable ( GL_LIGHTING); 
+   glEnable(GL_BLEND); 
+   // glLineWidth(1);  
+   // glColor3fv(a->colortraectory); 
+   glColor3fv(a -> colortraectory); 
+   // if(!mapmode) 
+   //  glBegin(GL_POINTS); 
+   // else  
+   glBegin(GL_LINE_STRIP); 
+   // int d=0; 
+   for ( int j = a -> i;j > a -> k - 1;j -- ) 
+   { 
+      //    if(d<255) d++; 
+      //  glColor3b(300-d,300-d,300-d);   
+      if ( j - 1 && j != 0 && a -> p[j - 1].x && a -> p[j].x) 
+      { 
+         glVertex3d(a -> p[j - 1].x, a -> p[j - 1].y,a -> p[j - 1].z); 
+         //  glVertex3d(a->p[j-1].x+0.5, a->p[j-1].y+0.5,a->p[j-1].z+0.5); 
+      } 
+   } 
+   glEnd(); 
+   glDisable(GL_BLEND); 
+   glEnable ( GL_LIGHTING); 
+} 
+static float color1[3] = 
+{ 0.8,0.8,1 
+}; 
+static float color2[3] = 
+{ 0,0.5,0 
+}; 
+static float color3[3] =
+{ 0,1,0 
+}; 
+static float color4[3] = 
+{ 0.5,0,0 
+}; 
+static float color5[3] = 
+{ 1,0,0 
+}; 
+void ShowTextInformation() 
+{ 
+   glColor3fv(color1); 
+   glDisable ( GL_LIGHTING); 
+   if ( WithInfo) 
+   { 
+      font.glDrawText(SSY, SSX - 100,SSY - 50,"FOV %d * ",(int)FOV << 1);// 
+      static float temperature = 1; 
+      static float tporog; 
+      tporog = 400000000000 / kvad(rasst(myship -> x,myship -> y,myship -> z,b[0] -> x,b[0] -> y,b[0] -> z)); 
+      if ( temperature > tporog) temperature *= 0.99; 
+      else 
+      { if ( temperature < 1)temperature = 1; else temperature *= 1.1; 
+      } 
+      glColor3fv(color1); 
+      //font.glDrawText(SSY, 14, SSY-96,"o");///// 
+      //  font.glDrawText(SSY, 70, SSY-96,"o");///// 
+      font.glDrawText(SSY, 10, SSY - 90,"Т = %.f C",tporog - 274);//// / 
+      font.glDrawText(SSY, SSX >> 1, SSY - 120,"[ M ] - Карта");//// / 
+   } 
+   glColor3fv(color3); 
+   font.glDrawText(SSY, p.x + 38, p.y - 10," + ");//// / 
+   // glColor3fv(color3) 
+   //  font.glDrawText(SSY, p.x, SSY-p.y,".");///// 
+   glColor3fv(color4); 
+   font.glDrawText(SSY, 10, SSY - 30,STRVERSION); 
+   font.glDrawText(SSY, 10, SSY - 20,"Programmer - Yevgeniy Useynov(C) 2006"); 
+   /* 
+   if ( WithStars) 
+   glColor3fv(color3); 
+   else glColor3fv(color4); 
+   font.glDrawText(SSY, 10, 10,"[6]Show stars"); 
+   if ( WithTraectory) 
+   glColor3fv(color3); 
+   else glColor3fv(color4); 
+   font.glDrawText(SSY, 10, 20,"[7]Show orbits");//// / 
+   if ( WithLabels) 
+   glColor3fv(color3); 
+   else glColor3fv(color4); 
+   font.glDrawText(SSY, 10, 30,"[8]Show labels");//// / 
+   if ( WithInfo) 
+   glColor3fv(color3); 
+   else glColor3fv(color4); 
+   font.glDrawText(SSY, 10, 45,"[9]Show info");//// / 
+   if ( WithCabin) 
+   glColor3fv(color3); 
+   else glColor3fv(color4); 
+   font.glDrawText(SSY, 10, 55,"[0]Show cabin");//// / 
+   */ 
+   if ( WithInfo) 
+   { 
+      glColor3fv(color1); 
+      font.glDrawText(SSY, 200, SSY - 100,"[W] Газ"); 
+      font.glDrawText(SSY, 200, SSY - 80,"[S ] Тормоз"); 
+      font.glDrawText(SSY, 200, SSY - 60,"[ J ] Гипер-прыжок на 100000000 km"); 
+      font.glDrawText(SSY, SSX - 100, SSY - 30,"[ + ] [ - ]");// 
+      if ( fps <= 25) glColor3fv(color5); 
+      else glColor3fv(color3); 
+      font.glDrawText(SSY, SSX - 90, 10,"FPS %d",fps); 
+      font.glDrawText(SSY, SSX - 90, 30,"IMIN %d",imin); 
+      font.glDrawText(SSY, SSX - 90, 70,"X %f",myship -> x); 
+      font.glDrawText(SSY, SSX - 90, 90,"Y %f",myship -> y); 
+      font.glDrawText(SSY, SSX - 90, 110,"Z %f",myship -> z); 
+   } 
+   glEnable ( GL_LIGHTING); 
+} 
+void ShowLoading(int n) 
+{ 
+   /* glPushMatrix(); 
+   glLoadIdentity(); 
+   glTranslatef(0,0, - 3); 
+   glColor3f(0,0,1); 
+   for ( int i = 0;i < n;i ++ ) 
+   { 
+      glTranslatef(0.02,0,0); 
+      glutSolidSphere(0.02,4,4); 
+   } 
+   glPopMatrix(); 
+   */ 
+   glClearColor(float(n / 1000),0,0,0); 
+   glutPostRedisplay(); 
+} 
+void ShowLabel(PLANET *a,double realr) 
+{ 
+   glDisable ( GL_LIGHTING); 
+   // glDisable    (GL_BLEND);      
+   if ( a -> NUM < GIANTSCOUNT) glColor3f(0,0.5,0); 
+   else glColor3f(0.5,0.5,0.5); 
+   if ( a -> opened && a -> Type == ISPORTAL) 
+   glColor3f(0.7,0,0.7); 
+   int twx = a -> GetPos(GETX), 
+   twy = a -> GetPos(GETY); 
+   /* int ss; 
+   if ( twy > ( SSY >> 1)) ss = SSY * 0.3; 
+   else ss = SSY - SSY * 0.3; 
+   */ 
+   if ( twx < 20) fontSmall.glDrawText(SSY,20,SSY - twy," <<< O");// twx = 20; 
+   if ( twx > SSX - 50) fontSmall.glDrawText(SSY,SSX - 50,SSY - twy,"O >>> ");// twx = SSX - 50; 
+   if ( twy < 30) fontSmall.glDrawText(SSY,twx,SSY - 30 - 25,"\\/\\/\\/ O");// twy = 30; 
+   if ( twy > SSY - 30) fontSmall.glDrawText(SSY,twx,SSY - ( SSY - 30) - 25," /\\/\\/\\ O");// twy = SSY - 30; 
+   // fontSmall.glDrawText(SSY,twx,SSY-twy,"%s",a->name); 
+   // fontSmall.glDrawText(SSY,twx,SSY-twy,"%ld km",(unsigned long)realr); 
+   fontSmall.glDrawText(SSY,twx,SSY - twy + 30,"%d km",(long)(realr)); 
+   // fontSmall.glDrawText(0,twx+50,-twy+25,"twy= %d",twy); 
+   //glEnable(GL_BLEND);                        
+   glEnable ( GL_LIGHTING); 
+} 
+void ShowLabelUFO(UFO *ufo,double realr) 
+{ 
+   if ( ufo -> GetPos(GETZ) == 0) 
+   { 
+      glDisable ( GL_LIGHTING); 
+      glColor3f(1,0,0); 
+      int twx = ufo -> GetPos(GETX), 
+      twy = ufo -> GetPos(GETY); 
+      if ( twx < 20) fontSmall.glDrawText(SSY,20,SSY - twy," <<< НЛО"); 
+      if ( twx > SSX - 50) fontSmall.glDrawText(SSY,SSX - 20,SSY - twy,"НЛО >>> "); 
+      if ( twy < 30) fontSmall.glDrawText(SSY,twx,SSY - 30 - 25,"\\ / \\ / \\ / НЛО"); 
+      if ( twy > SSY - 30) fontSmall.glDrawText(SSY,twx,SSY - ( SSY - 30) - 25," / \\ / \\ / \\НЛО"); 
+      glColor3f(1,0,0); 
+      fontSmall.glDrawText(SSY,twx,SSY - twy," ! "); 
+      // fontSmall.glDrawText(SSY,twx,SSY-twy+15,"%d km",(long)(realr*0.1)); 
+      glEnable ( GL_LIGHTING); 
+   } 
+} 
+void ShowPlanet(PLANET * a) 
+{ 
+   double r = rasst(myship -> x,myship -> y,myship -> z,a -> x,a -> y,a -> z) - a -> radius; 
+   float tempwz = a -> GetPos(GETZ); 
+   // 
+   //  if(WithLabels && tempwz==0)  
+   //    if(a->NUM && a->NUM<GIANTSCOUNT || (a->NUM>=GIANTSCOUNT && r<5000)) 
+   //     ShowLabel(a,r*SCALE); 
+   if ( WithTraectory ) 
+   { 
+      if ( a -> NUM < GIANTSCOUNT) ShowPlanetOrbit(a); 
+      // if(mapmode || r<10000) 
+      ShowTraectory(a); 
+   } 
+   if ( r > 50000 && FOV > 20) 
+   a -> Show(ASPOINT,1); 
+   else 
+   { if ( ! mapmode)a -> Show(HIGH,1); 
+      else a -> Show(WARE,1); 
+   } 
+   // if(n<GIANTSCOUNT && n==numkey && rasst(winx1,winy1,0,winx2,winy2,0)<b[n]->hr/(FOV*8)) 
+   // zasv=false; 
+} 
+void ShowPlanets() 
+{ 
+   //for(int n=PLANET_COUNT-1;n>0;n--) 
+   // if(E_planet[n])  
+   //  ShowPlanet(b[n]); 
+} 
+void ShowStars() 
+{ 
+   if ( ! mapmode) 
+   { 
+      glPushMatrix(); 
+      glTranslatef(myship -> x * 0.9999,myship -> y * 0.9999,myship -> z * 0.9999); 
+      glCallList(STARS); // glRotatef(-b[numkey]->rotate,b[numkey]->rx,b[numkey]->ry,b[numkey]->rz); 
+      glPopMatrix(); 
+   } 
+   else 
+   { 
+      glPushMatrix(); 
+      glLoadIdentity(); 
+      glRotatef( - 60,1,0,0); 
+      glRotatef(XROTATE,0,0,1); 
+      glCallList(STARS); // glRotatef(-b[numkey]->rotate,b[numkey]->rx,b[numkey]->ry,b[numkey]->rz); 
+      glPopMatrix(); 
+   } 
+} 
+void ShowSol() 
+{ glPushMatrix(); 
+   // glRotatef(90-ugol(mmm[12],mmm[14],b[0]->x,b[0]->z),0,1,0); 
+   // glRotatef(90-ugol(mmm[12],mmm[14],b[0]->x,b[0]->z),0,0,1); 
+   b[0] -> Show(HIGH,1); 
+   glPopMatrix(); 
+} 
+void ShowOreol() 
+{ static float grad = 0; 
+   grad += xrot * 0.5; 
+   static float grad2 = 0; 
+   grad2 += zrot * 0.5; 
+   static float rot = 0; 
+   if ( ( rot += 0.05) > 360)rot = 0; 
+   static int add = rand()%360; 
+   static int add2 = rand()%360; 
+   static bool temp = ( rand()%100) > 50; 
+   if ( b[0] -> GetPos(GETZ) == 0 && winx1 >- ( SSX >> 4) && winy1 >- ( SSY >> 4) && winx1 < SSX + ( SSX >> 4) && winy1 < SSY + ( SSY >> 4) ) 
+   { 
+      glPushMatrix(); 
+      //  glRotatef(90-ugol(mmm[12],mmm[14],b[0]->x,b[0]->z),0,1,0); 
+      // glRotatef(90-ugol(mmm[12],mmm[14],b[0]->x,b[0]->z),0,0,1);     
+      // glLoadIdentity();  glPushMatrix(); 
+      glRotatef(grad2 + rot + add,1,0,0); 
+      glPushMatrix(); 
+      glCallList(OREOL); 
+      glRotatef(60,1,0,0); 
+      glRotatef(grad + rot + add,0,0,1); 
+      glCallList(OREOL); 
+      glRotatef(60,1,0,0); 
+      glRotatef( - ( grad + grad2) + rot + add,0,0,1); 
+      glCallList(OREOL); 
+      glRotatef( - 60,0,1,0); 
+      glRotatef(grad - rot - add,1,1,1); 
+      glCallList(OREOL); 
+      glRotatef( - 60,0,0,1); 
+      glRotatef((grad + grad2) - rot - add,1,1,1); 
+      glCallList(OREOL); 
+      glPopMatrix(); 
+      glPopMatrix(); 
+   } 
+} 
+void ShowCorone() 
+{ static float grad = 0; 
+   grad -= xrot * 0.5; 
+   static float grad2 = 0; 
+   grad2 -= zrot * 0.5; 
+   static float rot = 0; 
+   if ( ( rot -= 0.1) > 360)rot = 0; 
+   static int add = rand()%360; 
+   static int add2 = rand()%360; 
+   static bool temp = ( rand()%100) > 50; 
+   if ( winx1 >- ( SSX >> 3) && winy1 >- ( SSY >> 3) && winx1 < SSX + ( SSX >> 3) && winy1 < SSY + ( SSY >> 3)) 
+   { 
+      glPushMatrix(); 
+      glRotatef(grad2 + rot + add,1,0,0); 
+      glPushMatrix(); 
+      glCallList(LUCHI); 
+      glPopMatrix(); 
+      glPopMatrix(); 
+   } 
+} 
+#define PUSHM glPushMatrix(); 
+#define POPM glPopMatrix(); 
+GLvoid glPrint(const char *fmt, ...); 
+void Draw () 
+{ 
+   static float ugolobzora = 0.0; 
+   glClear ( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // очистка окна 
+
+
+
+
+   glLoadIdentity (); 
+
+   /*
+   if ( GameState == LOADING) 
+   { 
+      glLoadIdentity (); 
+      glTranslatef(0,0, - 10000); 
+      glPushMatrix(); 
+      glScalef(100,100,100); 
+      glCallList(OREOL); 
+      glPopMatrix(); 
+      // ShowStars(); 
+      glColor3f(1,1,1); 
+      glDisable(GL_LIGHTING); 
+      fontMedium.glDrawText(SSY,SSX >> 1,(SSY >> 1) - 10," %d%%",100 - otsch / 100); 
+      fontBig.glDrawText(SSY,(SSX >> 1) - 100,50,"Уровень %d", Level); 
+      glEnable(GL_LIGHTING); 
+      glDisable(GL_BLEND); 
+      for ( int k = 1;k < Level + 1;k ++ ) 
+      { 
+         glPushMatrix(); 
+         glRotatef(k*otsch / 27.7,0,0,1); 
+         glTranslatef( - otsch / 2.5,0,0); 
+         // glutSolidSphere(100,20,20);  
+         glScalef(3,3,3); 
+         glRotatef(45,0,1,0); 
+         b[k] -> Show(HIGH,0); 
+         glPopMatrix(); 
+      } 
+      glEnable(GL_BLEND); 
+   } */
+
+
+   if ( GameState == GAME) 
+   { 
+      // glRotatef(-YROTATE,0,1,0);  
+      // glRotatef(-XROTATE,1,0,0);   
+      // myship->Show(); 
+      if ( ! mapmode) 
+      { 
+         // glPushMatrix(); 
+         glMultMatrixd(invm); 
+         glGetDoublev(GL_MODELVIEW_MATRIX,tempm); 
+         // glPopMatrix(); 
+         /* 
+         static double zz = 0; 
+         zz -= zrot; 
+         YROTATE -= xrot; 
+         glRotatef( - YROTATE,1,0,0); 
+         glRotatef(zz,0,0,1); 
+         glTranslatef( - myship -> x, - myship -> y, - myship -> z); 
+         */ 
+      } 
+      else 
+      { glPushMatrix(); 
+         glMultMatrixd(invm); 
+         glGetDoublev(GL_MODELVIEW_MATRIX,tempm); 
+         glPopMatrix(); 
+         if ( YROTATE < 0.5) 
+         YROTATE = 0.5; 
+         a =- ( YROTATE) * 500; 
+         glTranslatef(0,0,a*YROTATE - 500); 
+         glRotatef( - 60,1,0,0); 
+         glRotatef(XROTATE,0,0,1); 
+         glTranslatef( - myship -> x, - myship -> y, - myship -> z); 
+      } 
+      /// glRotatef(ugolobzora+=1,0,1,0);  
+      PUSHM 
+      glLightfv(GL_LIGHT1, GL_POSITION, pos0); 
+      // font.ShowLabelText(0,0,"FPS", 0, 255, 255); 
+      //glTranslatef(0,0,-LIMITSPACE*ZOOM); 
+      //glRotatef(-XROTATE,1,0,0); 
+      //glRotatef(YROTATE,0,0,1); 
+      //glTranslatef(-b[numkey]->x,-b[numkey]->y,-b[numkey]->z); 
+    /*  for ( int i = 0;i < UFOCOUNT;i ++ ) 
+      { if ( ufo[i] -> active) 
+         ShowTraectoryUFO(ufo[i]); 
+      } */
+
+
+      ShowSpaceClouds(); 
+      if ( mapmode) 
+      { 
+         if ( showpoint) glColor3f(1,0,0); 
+         else glColor3f(0,0,0); 
+         glEnable(GL_BLEND); 
+         glDisable(GL_LIGHTING); 
+         :: glPushMatrix(); 
+         :: glTranslated(mmm[12],mmm[13],mmm[14]); 
+         glutSolidSphere(10,8,8); 
+         :: glPopMatrix(); 
+         glBegin(GL_LINE_STRIP); 
+         glVertex3f(mmm[12],mmm[13],mmm[14]); 
+         glColor3f(0.5,0,0); 
+         glVertex3f( 
+         mmm[12] + 1, 
+         mmm[13] + 1, 
+         mmm[14] + 1); 
+         glVertex3f( 
+         mmm[12] + 1, 
+         mmm[13], 
+         mmm[14] + 1); 
+         glEnd(); 
+         glEnable(GL_LIGHTING); 
+         glDisable(GL_BLEND); 
+         // ::ShowSetka(); 
+      } 
+      /* if ( mapmode) 
+      { 
+         glEnable(GL_LINE_STIPPLE); 
+         for ( int i = GIANTSCOUNT;i < PLANET_COUNT;i ++ ) 
+         { 
+            if ( E_planet[i]) 
+            { 
+               if ( b[i] -> Type == ISPORTAL) 
+               { glPushMatrix(); 
+                  glColor3fv(b[i] -> colortraectory); 
+                  glLineStipple(2,0x1C47); 
+                  Line( 
+                  b[i] -> x, 
+                  b[i] -> y, 
+                  b[i] -> z, 
+                  b[b[i] -> num_dest] -> x + b[b[i] -> num_dest] -> hr, 
+                  b[b[i] -> num_dest] -> y + b[b[i] -> num_dest] -> hr, 
+                  b[b[i] -> num_dest] -> z + b[b[i] -> num_dest] -> hr); 
+                  glPopMatrix(); 
+               } 
+            } 
+         } 
+         glDisable(GL_LINE_STIPPLE); 
+      } */ 
+      /* 
+      glEnable(GL_BLEND); 
+      for ( int i = 0;i < 100;i ++ ) 
+      pyl[i] -> show(); 
+      */ 
+
+      glDisable(GL_BLEND); 
+
+
+      /* 
+      for ( int n = PLANET_COUNT - 1;n > 0;n -- ) 
+      if ( E_planet[n]) 
+      if ( rasst(mmm[12],mmm[13],mmm[14],b[n] -> x,b[n] -> y,b[n] -> z) 
+      > rasst(mmm[12],mmm[13],mmm[14],0,0,0)) 
+      ShowPlanet(b[n]); 
+      */ 
+      // ShowPlanets(); 
+      if ( WithStars) 
+      ShowStars(); 
+
+
+
+      if ( E_planet[0]) 
+      { ShowSol(); 
+         if(!StarGigant)  
+         ShowCorone(); 
+      }
+	  
+
+      for ( int n = 1;n < PLANET_COUNT;n ++ ) 
+      if ( E_planet[n]) 
+      // if(    rasst(mmm[12],mmm[13z],mmm[14],b[n]->x,b[n]->y,b[n]->z)  
+      //  <  rasst(mmm[12],mmm[13],mmm[14],0,0,0)) 
+      ShowPlanet(b[n]);
+	  
+
+   /*   for ( i = 0;i < UFOCOUNT;i ++ ) 
+      { if ( ufo[i] -> active) 
+         { 
+            ufo[i] -> Show(); 
+            if ( mapmode) ShowLabelUFO(ufo[i],0); 
+         } 
+      } 
+*/
+
+  //    if ( ! mapmode) 
+  //    myship -> Show(); 
+      if ( E_planet[0]  && ! StarGigant ) 
+      { ShowOreol(); 
+      } 
+      /* glColor3f(0.5,1,0.5); 
+      for ( i = 0;i < BALLCOUNT;i ++ ) 
+      if ( ball[i] -> dx != 0 || ball[i] -> dy != 0 || ball[i] -> dz != 0) 
+      ball[i] -> show(); 
+      */ 
+
+	  /*
+      if ( ! mapmode) 
+      { 
+         glColor3f(0,1,0); 
+         glDisable(GL_LIGHTING); 
+         glDisable(GL_BLEND); 
+         glBegin(GL_LINES); 
+         glVertex3f( 
+         myship -> x - tempm[2] * 1000, 
+         myship -> y - tempm[6] * 1000, 
+         myship -> z - tempm[10] * 1000 
+         ); 
+         glVertex3f( 
+         myship -> x - tempm[2] * 10, 
+         myship -> y - tempm[6] * 10, 
+         myship -> z - tempm[10] * 10 
+         ); 
+         glEnd(); 
+      } */
+      // if(gid)  
+    /*  if ( ! mapmode) 
+      ShowTextInformation(); 
+      glColor3fv(color1); 
+      glDisable ( GL_LIGHTING); 
+      static float sp; 
+      sp = dway*SCALE; 
+      if ( sp >= 300000) 
+      fontMedium.glDrawText(SSY, 100, SSY - 150,"Скорость = %.1f c",sp / 300000); 
+      else fontMedium.glDrawText(SSY, 100, SSY - 150,"Скорость = %d km / sec",(int)sp); 
+      glEnable ( GL_LIGHTING); */
+      POPM 
+   } // if  
+   glFlush(); 
+   glutSwapBuffers(); 
+} 
+void ShowSetka() 
+{ 
+   static bool b = 1; 
+   if ( b) 
+   { 
+      glNewList(999,GL_COMPILE); 
+      glDisable ( GL_LIGHTING); 
+      glEnable(GL_BLEND); 
+      glBegin(GL_LINES); 
+      glColor3f(0,0,0.1); 
+      for ( long j =- LIMITSPACE * 1000;j <= LIMITSPACE * 1000;j += LIMITSPACE * 1000) 
+      { 
+         if ( j == 0) continue; 
+         for ( long i =- LIMITSPACE * 500;i <= LIMITSPACE * 500;i += LIMITSPACE * 100) 
+         { 
+            if ( i == 0) continue; 
+            glVertex3d(i, - LIMITSPACE * 1000, j); 
+            glVertex3d(i,LIMITSPACE * 1000, j); 
+            glVertex3d( - LIMITSPACE * 1000,i, j); 
+            glVertex3d(LIMITSPACE * 1000,i, j); 
+         } 
+      } 
+      glColor3f(0.1,0,0); 
+      for ( j =- LIMITSPACE * 1000;j <= LIMITSPACE * 1000;j += LIMITSPACE * 1000) 
+      { if ( j == 0) continue; 
+         for ( long i =- LIMITSPACE * 500;i <= LIMITSPACE * 500;i += LIMITSPACE * 100) 
+         { 
+            if ( i == 0) continue; 
+            glVertex3d( - LIMITSPACE * 1000, j, i); 
+            glVertex3d(LIMITSPACE * 1000, j, i); 
+            glVertex3d(i, j, - LIMITSPACE * 1000); 
+            glVertex3d(i, j, LIMITSPACE * 1000); 
+         } 
+      } 
+      glEnd(); 
+      glEnable ( GL_LIGHTING); 
+      glDisable(GL_BLEND); 
+      glEndList(); 
+      b = 0; 
+   } 
+   glPushMatrix(); 
+   glCallList(999); 
+   glPopMatrix(); 
+} 
+ 

@@ -1,0 +1,27 @@
+Title: IGES Import Journal (built for Discreet's 3D Studio version 4.0)
+==============================================================================
+File: E:\_MyProjects\3d\sh.xlo
+Date: Tue, Oct 31, 2006
+Time: 00:31:17
+==============================================================================
+
+Translating IGES file:        E:\_MyProjects\3d\sh.IGS
+
+==============================================================================
+Error Summary:
+
+The following message was issued 1 time(s)
+Model specified to be formatted does not contain any entities.
+
+Information: 0
+Status:      0
+Warning:     0
+Error:       1
+Fatal:       0
+
+Elapsed Time:
+
+Processor: 00:00:00
+Clock:     00:00:00
+==============================================================================
+

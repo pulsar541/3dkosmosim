@@ -1,0 +1,953 @@
+GLfloat	pos0[4]={0,0,0,1};
+GLfloat	lightmodel0[4]={0.01,0.01,0.01,1};
+double XCAM=0;
+double YCAM=0;
+double ZOOM=1;
+
+
+int SOLCOUNT=1;
+int ASTEROIDSCOUNT=30;
+int GIANTSCOUNT=SOLCOUNT+2;
+#define LIMITSPACE 10000
+int PLANET_COUNT=GIANTSCOUNT+ASTEROIDSCOUNT;
+
+double MAXSPEED=1.000;
+bool WithTraectory=1;
+double MASS_OF_SOL=10000;   //1000000;
+
+
+
+//#include  "us_math.h"
+
+
+
+int    Lhvost=1000;
+bool E_planet[1000]={1};
+int detalization=15;
+
+
+class PLANET;
+PLANET *b[1000];
+
+--------------------------------------------
+
+#include	<math.h>
+
+void DELETE_PLANET(PLANET *pl)
+{
+ E_planet[pl->NUM]=false;
+}
+
+
+
+void Raschet(int n)
+{
+	    int t=0;
+		b[n]->Fpl.calc_kas(  b[n]->oldx,
+							 b[n]->oldy,
+							 b[n]->oldz,
+							 b[n]->x,
+							 b[n]->y,
+							 b[n]->z);
+
+		b[n]->Fmove=b[n]->Fpl;
+	
+	//	if(b[n]->Fmove.value>MAXSPEED*3) b[n]->Fmove.value=MAXSPEED;
+
+
+			
+		for(int k=0;k<PLANET_COUNT-1;k++,t++)
+		{
+			 if(t==n) t++;
+			 if(t>PLANET_COUNT-1) t=0;
+
+ 
+	//	if(t<GIANTSCOUNT && E_planet[t])
+		 if(E_planet[t])
+			 {	 
+				 b[n]->Fpl.calc_prit(
+					 b[n]->x,
+					 b[n]->y,
+					 b[n]->z,
+					  b[t]->x,
+					  b[t]->y,
+					  b[t]->z,
+					 b[t]->massa);
+
+				 b[n]->Fmove=resultofAddVect(b[n]->Fpl,b[n]->Fmove);	
+				 
+	
+			 	 if(DISTANCE(b[n],b[t])<b[n]->hr+b[t]->hr)
+				 {
+				    double temp0=b[n]->massa+b[t]->massa;
+				    double temp1=b[t]->hr/2;	
+					double temp2=b[n]->hr/2;
+					
+
+					  if(b[t]->massa>b[n]->massa) 
+							{DELETE_PLANET(b[n]);  
+							 b[t]->massa=temp0;
+							// b[t]->hr+=temp2;
+							}
+					  else  {DELETE_PLANET(b[t]);  
+							 b[n]->massa=temp0;
+							// b[n]->hr+=temp1;
+							}
+				 }
+			 }
+			 else 
+			 {
+			 	 if(DISTANCE(b[n],b[t])<b[n]->hr+b[t]->hr )
+				 {	DELETE_PLANET(b[t]);  
+					
+				 }
+			 
+			 }
+
+	 
+			 
+		}
+
+
+		b[n]->Fmove=resultofAddVect(b[n]->Fpl,b[n]->Fmove);
+		b[n]->dx=(b[n]->Fmove.x1-b[n]->Fmove.x0);
+		b[n]->dy=(b[n]->Fmove.y1-b[n]->Fmove.y0);
+		b[n]->dz=0;
+}
+
+-------------------------------
+
+
+#include	<windows.h>
+#include	<time.h>
+#include	<math.h>
+#include	"glut.h"
+#include	<stdio.h>
+#include	<iostream.h>
+
+
+#include	"data.h"
+#include    "planet.h"
+#include	"r.h"
+#include	"input.h"
+
+
+
+void		Draw	();
+void		Idle	();
+void		Reshape	(int w,int h);
+
+
+
+
+
+
+void	Reshape	(int w,int h)
+{	//	функция вызывается при изменении размеров окна
+	glViewport		(0,0,w,h);			//	новый размер окна
+	glMatrixMode	(GL_PROJECTION);	//	выбор матрицы проекций (камеры)
+	glLoadIdentity	();					
+	gluPerspective(40,(float)w/(float)h,0.01,LIMITSPACE*10);
+	glMatrixMode	(GL_MODELVIEW);		//	выбор матрицы модели
+	glLoadIdentity	();	
+    gluLookAt(0,0,1,0,0,0,0,1,0);
+  
+}
+
+
+
+int pokrugu(int K)
+{static int k=1; 
+ if(k==K) k=1;
+ else  k++;
+ return k;
+}
+
+
+
+void CreatePlanets(int kol)
+{
+
+	b[0]=new PLANET(400,
+						0,0,0,
+						0,
+						0,
+						1,1,1,
+						MASS_OF_SOL,
+						0);	
+	E_planet[0]	=1;
+
+	for(int i=1;i<GIANTSCOUNT;i++)
+	{	int xx=-rand()%LIMITSPACE;
+		int yy=rand()%LIMITSPACE;
+		int radius=myrandom(10,15);		
+		b[i]=new PLANET(radius,
+						xx,yy,0,
+						UGOL(0,0,xx,yy)+90,
+						MAXSPEED,
+						1+minirand()/2,
+						1+minirand()/2,
+						1+minirand()/2,
+						radius*0.3,
+						i
+						);
+		E_planet[i]	=1;
+	}
+		
+
+
+	for(i=GIANTSCOUNT;i<kol;i++)
+	{
+		int xx=-rand()%LIMITSPACE;
+		int yy=rand()%LIMITSPACE;
+		int radius=minirand()+myrandom(1,3);	
+		int tempi=pokrugu(GIANTSCOUNT-1);
+		b[i]=new PLANET(radius,
+						b[tempi]->x+rand()%200-100,b[tempi]->y+rand()%200-100,0,
+						myrandom(UGOL(0,0,b[tempi]->x,b[tempi]->y)+80,UGOL(0,0,b[tempi]->x,b[tempi]->y)+100),
+						myrandom(MAXSPEED-0.2,MAXSPEED+0.2),
+						1+minirand()/2,
+						1+minirand()/2,
+						1+minirand()/2,
+						radius*0.001,
+						i
+						);
+		E_planet[i]	=1;
+
+	}
+}
+
+/**/
+
+void	main	(int argc,char *argv[])
+{
+//	ReadIni();
+//
+//	InitFact();
+
+	srand( (unsigned)time( NULL ) );
+
+    glutInit				(&argc,argv);			//	инициализация GLUT
+	glutInitWindowPosition	(0,0);
+	glutInitWindowSize		(700,600);
+	glutInitDisplayMode		(GLUT_RGBA|GLUT_DEPTH|GLUT_DOUBLE);	//	режим работы
+	glutCreateWindow		("SolSystem");	//	создать окно
+	
+	
+
+	glutIdleFunc			(Idle);					//	используется для анимации
+	glutDisplayFunc			(Draw);					//	функция перерисовки окна
+	glutReshapeFunc			(Reshape);				//	изменение размеров окна
+	glutKeyboardFunc		(KeyDown);
+	glutKeyboardUpFunc		(KeyUp);
+	glutSpecialFunc			(SpKeyDown);
+	glutSpecialUpFunc		(SpKeyUp);
+
+	glEnable				(GL_DEPTH_TEST);
+
+	glEnable				(GL_COLOR_MATERIAL);
+	glEnable				(GL_LIGHTING);
+	glEnable				(GL_LIGHT0);
+
+	glLightModelfv			(GL_LIGHT_MODEL_AMBIENT,lightmodel0);
+	glClearColor			(0,0,0,0);				//	цвет фона
+	glutFullScreen();
+//	glEnable				(GL_BLEND);
+//	glBlendFunc				(GL_SRC_ALPHA_SATURATE,GL_ONE);
+	glEnable				(GL_POINT_SMOOTH);
+
+	glLightfv(GL_LIGHT0, GL_POSITION, pos0);
+
+	CreatePlanets(PLANET_COUNT);
+
+	glutMainLoop			();						//	запуск цикла обработки сообщений
+	
+ 	
+//fclose(fp);
+}
+
+//int razbien=0;
+
+void Idle()
+{
+	for(int i=1;i<PLANET_COUNT;i++)
+		if(E_planet[i])	
+		{	Raschet(i);
+			b[i]->Move();
+		}
+	  
+
+	if(left)	XCAM+=100*ZOOM;
+	if(right)	XCAM-=100*ZOOM;
+	if(up)		YCAM-=100*ZOOM;
+	if(down)	YCAM+=100*ZOOM;
+
+
+	if(zoomplus && ZOOM>0.01) ZOOM/=1.05;
+
+	if(zoominus && ZOOM<5) ZOOM*=1.05;
+
+ glutPostRedisplay();
+}
+
+
+void	Draw	()			
+{	glClear	(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);	//	очистка окна
+	
+  
+	glLoadIdentity	();	
+
+  
+
+	glPushMatrix();
+
+
+	if(numkey)	glTranslatef(-b[numkey]->x,-b[numkey]->y,-LIMITSPACE*ZOOM);
+	else		glTranslatef(XCAM,YCAM,-LIMITSPACE*ZOOM);
+
+	//glRotatef(45,1,0,0);
+
+	glLightfv(GL_LIGHT0, GL_POSITION, pos0);
+	for(int i=0;i<PLANET_COUNT;i++)
+	{		
+	 if(E_planet[i]) 
+		 b[i]->Show(0);
+	}
+
+//	glutSolidSphere(100,12,12);
+	glPopMatrix();
+
+	
+	
+	  
+
+
+/*
+
+	glPushMatrix();
+	glTranslatef(-LIMITSPACE/2,LIMITSPACE/2,-LIMITSPACE*2-10000)
+		;
+	glLightfv(GL_LIGHT0, GL_POSITION, pos0);
+	glScalef(0.1,0.1,0);
+
+	for(i=0;i<PLANET_COUNT;i++)
+	{
+			
+	 b[i]->Show(WithTraectory);
+	}
+//	glBegin(GL_QUADS);
+//		glVertex3f(-LIMITSPACE*5,-LIMITSPACE*5,0);
+///		glVertex3f(-LIMITSPACE*5,LIMITSPACE*5,0);
+//		glVertex3f(LIMITSPACE*5,LIMITSPACE*5,0);
+//		glVertex3f(LIMITSPACE*5,-LIMITSPACE*5,0);
+//	glEnd();
+//	ShowGranitza();
+	glPopMatrix();
+
+*/
+
+
+//	glFlush();
+	glutSwapBuffers();
+
+}
+---------------------------------------
+
+
+
+
+const long double PO180=
+3.141592653589793238462643383279502884197169399375105820974944
+/180.000000
+; // для перевода радиан в углы
+
+
+
+const long double _180oP=
+180.000000/
+3.141592653589793238462643383279502884197169399375105820974944
+; // для перевода углов в радианы  
+
+
+
+double FSIN(double x)
+{long double xx=x*x;//2
+ long double xxx=xx*x;//3
+ long double xxxxxx=xxx*xxx; //6
+
+
+ return sin(x);
+
+ return x-0.166666667*xxx
+	     +0.008333333*xxx*xx
+		 -0.000198413*xxxxxx*x
+		 +0.000002756*xxxxxx*xxx
+		 -0.000000025*xxxxxx*xxx*xx;
+	//	 +1.6059044e-10*pow(x,13);
+
+ 
+}
+
+
+
+long double FCOS(long double x)
+{ 
+ long double xx=x*x;
+ long double xxxx=xx*xx;
+ long double xxxxxxxx=xxxx*xxxx;
+
+ return cos(x);
+
+ return   1.00000000
+	     -0.500000000*xx
+		 +0.041666667*xxxx
+		 -0.001388889*xxxx*xx
+		 +0.000024802*xxxxxxxx
+		 -0.000000276*xxxxxxxx*xx
+		 +0.000000002*xxxxxxxx*xxxx
+		 -1.1470746e-11*xxxxxxxx*xxxx*xx;
+
+}
+
+
+
+
+double minirand()
+{ return (double)(rand()%100)/100;
+}
+
+
+double minirand2()
+{  return (double)(rand()%100)/4000;
+}
+
+
+double myrandom(double a,double b)
+{a*=1000;
+ b*=1000;
+ double temp=(a+rand()%((int)b-(int)a));
+ return temp/1000;
+
+}
+
+
+double UGOL(double X1,double Y1,double X2,double Y2)
+{ double b;  b=fabs(Y1-Y2);
+ double c;  c=fabs(X1-X2);
+ double result_ugol=0;
+
+  if(Y2<=Y1 && X2>=X1) result_ugol=360-atan(b/c)*_180oP;
+  if(Y2<=Y1 && X2<X1)  result_ugol=180+atan(b/c)*_180oP;
+  if(Y2>Y1 && X2<=X1)  result_ugol=180-atan(b/c)*_180oP;
+  if(Y2>Y1 && X2>X1)   result_ugol=atan(b/c)*_180oP;  
+  return result_ugol;
+
+}
+
+
+double kvad(double u)
+{ return u*u;
+}
+
+
+/*
+
+double KOREN(double x)
+{int i=0;
+ float sq0,sq=x;
+ do
+ {
+   i++;  
+   sq0=sq; 
+   sq=(sq0+x/(sq0))/2;
+ }
+ while(sq!=sq0);
+ return sq;
+}
+
+double (*koren)(double)=KOREN;
+
+*/
+
+
+double  rasst (double X1,double Y1,double Z1,
+			   double X2,double Y2,double Z2)
+{return sqrt(kvad(fabs(X1-X2))+kvad(fabs(Y1-Y2))+ kvad(fabs(Z1-Z2)));
+} ;
+
+/*
+double  RASST (double X1,double Y1,double X2,double Y2)
+{return sqrt(kv(fabs(X1-X2))+kv(fabs(Y1-Y2)));
+} 
+*/
+//double (*rasst)(double ,double ,double ,double )=RASSTOYANIE;
+
+
+/*
+
+void krug(double r,double x,double y,float rotate,bool rx,bool ry,bool rz)
+{
+	glPushMatrix();
+	glTranslatef (x,y,0);
+	glRotatef(rotate,rx,ry,rz);	
+    glutSolidSphere(r,detalization,detalization);	
+	glPopMatrix();
+  
+}*/
+
+
+
+
+// класс вектора силы
+class F
+{public:
+ double degree;		  //угол направления
+ double value;		  //величина силы
+ // координаты 
+ double x0,y0,z0,  // откуда смотрит вектор
+	    x1,y1,z1;  // куда смотрит вектор
+ F()
+ {
+  degree=0;
+  value=0;
+ }
+
+
+ void calc_kas(double oldx,double oldy,double oldz,
+	           double x,    double y,    double z)
+ {  x0=x;
+    y0=y; 
+	z0=z;
+	degree=UGOL(oldx,oldy,x,y);
+    value=rasst(oldx,oldy,oldz,x,y,z);
+	x1=x0+FCOS(degree*PO180)*value;
+    y1=y0+FSIN(degree*PO180)*value;
+
+ }
+
+
+ void calc_prit(double xa,double ya,double za,
+	            double xb,double yb,double zb,
+				double mass)
+ {  x0=xa;
+    y0=ya;
+    z0=za;
+	degree=UGOL(xa,ya,xb,yb);
+	value=mass/ kvad(rasst(xa,ya,za,xb,yb,zb));
+	x1=x0+FCOS(degree*PO180)*value;
+    y1=y0+FSIN(degree*PO180)*value;
+ }
+ 
+
+
+};
+
+
+F resultofAddVect(F A, F B)
+{
+	F FRES;
+	FRES.x0=A.x0;
+	FRES.y0=A.y0;
+	FRES.z0=A.z0;
+
+ 	FRES.x1=A.x1+B.x1-FRES.x0;
+	FRES.y1=A.y1+B.y1-FRES.y0;
+	FRES.z1=A.z1+B.z1-FRES.z0;
+
+//	FRES.value=rasst(FRES.x0,FRES.y0,FRES.x1,FRES.y1);
+//	FRES.degree=UGOL(FRES.x0,FRES.y0,FRES.x1,FRES.y1);
+
+	return FRES;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////
+
+struct MYPOINT
+{
+	double x;
+	double y;
+	double z;
+};
+
+struct MYCOLOR
+{
+	double r;
+	double g;
+	double b;
+};
+
+
+ 
+class PLANET
+{
+private:	
+	bool lb_planet; //признак "перемещения планеты мышкой"
+
+	MYPOINT p[10000];
+	MYCOLOR  colorplanet;
+
+
+	// векторы
+
+
+	void ShowTraectory()
+	{   
+	 glDisable				(GL_LIGHTING); 
+	 glPointSize(hr);
+	 glBegin(GL_LINES);
+	 glColor3f( colorplanet.r*0.5,
+				colorplanet.g*0.5,
+				colorplanet.b*0.5);
+
+	 
+    for(int j=i;j>11;j-=30) 
+		if(p[j+30].x)
+		{	glVertex2d(p[j].x,p[j].y);		
+			glVertex2d(p[j+30].x,p[j+30].y);
+		}
+		glEnd();
+		glEnable				(GL_LIGHTING);
+	
+		
+		if(i++>10000)  i=0;
+
+	}
+
+
+
+public:
+	double oldx;		// X координата   небесного тела в предыдущий момент времети
+	double oldy;		// Y координата   небесного тела в предыдущий момент времети
+	double oldz;		// Z координата   небесного тела в предыдущий момент времети
+
+	double x;			// X координата   небесного тела в текущий момент времети
+	double y;			// Y координата   небесного тела в текущий момент времети
+	double z;			// Z координата   небесного тела в текущий момент времети
+
+	double dx,dy,dz;	// приращение пути небесного тела по орбите
+	double massa;
+	double hr;         // радиус   небесного тела
+    int i,k;
+	double rotate; 
+	bool rx,ry,rz;
+
+	int NUM;			// номер   небесного тела
+
+	// векторы силы     
+
+	F	    Fpl;	    //инерции и притяжения к другому небесному телу
+	F    	Fmove;      //движения (результирующая от предыдущих векторов сил)
+ 
+PLANET(double rad,
+	   double x0,double y0,double z0,
+	   double ugol,
+	   double speed,
+	   double r,double g,double b,
+	   double m,
+	   int num)
+	{
+		  NUM=num;
+
+		  x=x0;
+		  y=y0;
+		  z=z0;
+
+		  oldx=x0-FCOS(ugol*PO180)*(speed+0.00001);
+		  oldy=y0-FSIN(ugol*PO180)*(speed+0.00001); 
+		  oldz=0; 
+	
+		  massa=m;
+		  hr=rad;
+		  colorplanet.r=r;
+		  colorplanet.g=g;
+		  colorplanet.b=b;
+		 
+		  	  
+		  for(i=0;i<10000;i++) 
+		   p[i].x=p[i].y=p[i].z=0;
+
+			i=0; 
+			k=0;
+
+			rotate=0;
+			rx?0:1;
+			ry=1;
+			rz?0:1;
+
+			if(NUM==0)
+			{
+			glNewList(NUM+1,GL_COMPILE);
+			glDisable				(GL_LIGHTING);	
+			glColor3f( r,g,b);
+		
+		//		glEnable				(GL_BLEND);
+		
+		///		for(float k=0.0;k<1;k+=0.03f)
+		//		{
+				//	
+
+			/*	
+					glBegin(GL_TRIANGLES);
+					for(int u=0;u<360;u+=20)
+					{
+					 glColor3f(1,1,1);
+					  glVertex3f(0,0,0); 
+					  glVertex3f(cos(PO180*u)*hr,sin(PO180*u)*hr,0); 
+					  glVertex3f(cos(PO180*(u+20))*hr,sin(PO180*(u+20))*hr,0);
+					  
+					}
+					glEnd(); */
+
+				
+			    
+				//
+		//		}
+		//	glDisable				(GL_BLEND);
+
+			glutSolidSphere(hr,detalization,detalization);	
+			glEnable				(GL_LIGHTING);
+			glEndList();	
+		}
+
+		else
+		{glNewList(NUM+1,GL_COMPILE);
+		 glColor3f( r,g,b);
+		 glutSolidSphere(hr,detalization,detalization);	
+		 glEndList();
+		}
+	
+
+
+
+	}
+
+	void Move()
+	{
+	 oldx=x;
+	 oldy=y;
+	 oldz=z;
+	 
+	 x+=dx;
+	 y+=dy;
+	 z+=dz;
+	}
+
+	
+	void Show(bool with_traectory)
+	 {
+
+   glColor3f(  colorplanet.r,
+					colorplanet.g,
+					colorplanet.b);
+	 	glPushMatrix();	
+		if(ZOOM>0.3 && NUM) 
+		{
+		 
+			glDisable				(GL_LIGHTING);
+			 glPointSize(hr*0.5); 
+			 glBegin(GL_POINTS); 
+			  glVertex3f(x,y,0); 
+			 glEnd();
+			 glEnable				(GL_LIGHTING);	
+	
+		}
+		else
+		{
+		//	if(NUM==0)  glDisable				(GL_LIGHTING);
+		
+			 glTranslatef (x,y,0);
+		//	 glScalef(hr,hr,hr);
+			 glRotatef(rotate+=0.1,0,0,1);
+			 glCallList(NUM+1);  
+			 
+			if(rotate>359) 	 rotate=0;
+		//	if(NUM==0)  	glEnable				(GL_LIGHTING);
+		}
+
+		glPopMatrix();
+
+		 p[i].x=x;
+	     p[i].y=y;
+	     p[i].z=z;
+
+		if(WithTraectory/* && NUM <GIANTSCOUNT */) 		
+		ShowTraectory();
+
+	
+	 }
+
+};
+
+double DISTANCE(PLANET *a,PLANET *b)
+{
+	return rasst(a->x,a->y,a->z,b->x,b->y,b->z);
+}
+
+
+
+void ShowSetka()
+{/*glPushMatrix();
+
+	
+	glColor3f(0,0,0.3);
+	
+	glDisable				(GL_LIGHTING);	
+	
+	glBegin(GL_LINES);
+
+	for(int i=-LIMITSPACE;i<LIMITSPACE;i+=1000)
+	{
+	 glVertex3f(i,-LIMITSPACE,0);
+	 glVertex3f(i,LIMITSPACE,0);
+	 glVertex3f(-LIMITSPACE,i,0);
+	 glVertex3f(LIMITSPACE,i,0);
+
+	}
+    glEnd();
+
+		glEnable				(GL_LIGHTING);
+glPopMatrix();*/
+}
+
+
+/*
+void ShowGranitza()
+{glPushMatrix();
+	glColor3f(0.2,0.2,0.2);
+	
+	glDisable				(GL_LIGHTING);	
+	
+	glBegin(GL_LINES);
+
+	for(int i=-LIMITSPACE;i<=LIMITSPACE;i+=LIMITSPACE)
+	{
+	 glVertex3f(i,-LIMITSPACE,0);
+	 glVertex3f(i,LIMITSPACE,0);
+	 glVertex3f(-LIMITSPACE,i,0);
+	 glVertex3f(LIMITSPACE,i,0);
+
+	}
+    glEnd();
+		glEnable				(GL_LIGHTING);
+
+glPopMatrix();
+}
+
+
+
+
+*/
+
+--------------------------------------------
+
+int numkey=0;
+bool left=0,up=0,down=0,right=0;
+bool zoomplus=0, zoominus=0;
+
+void KeyDown(unsigned char key,int x ,int y)
+{
+ if(key==27) exit(0);
+ if(key==43 || key==61) zoomplus=1;
+ if(key==45) zoominus=1;
+ if(key=='a') left=1; 
+ if(key=='d') right=1;
+ if(key=='s') down=1;
+ if(key=='w') up=1;
+
+ if(key>='0' && key<='9') numkey=key-'0';
+  if(key==32) WithTraectory=!WithTraectory;
+
+}
+
+void KeyUp(unsigned char key,int x ,int y)
+{
+ if(key==43 || key==61) zoomplus=0;
+ if(key==45) zoominus=0;
+ if(key=='a') left=0;
+ if(key=='d') right=0;
+ if(key=='s') down=0;
+ if(key=='w') up=0;
+}
+
+
+
+
+void SpKeyDown(int key,int x ,int y)
+{
+ if(key==GLUT_KEY_LEFT) left=1;
+ if(key==GLUT_KEY_RIGHT) right=1;
+ if(key==GLUT_KEY_DOWN) down=1;
+ if(key==GLUT_KEY_UP) up=1;
+
+}
+
+void SpKeyUp(int key,int x ,int y)
+{
+
+ if(key==GLUT_KEY_LEFT) left=0;
+ if(key==GLUT_KEY_RIGHT) right=0;
+ if(key==GLUT_KEY_DOWN) down=0;
+ if(key==GLUT_KEY_UP) up=0;
+ 
+}
+
+
+
+
+/*
+FILE *fp;
+void ReadIni()
+{
+
+if((fp=fopen("settings.cfg","r"))==NULL) 
+	{MessageBox(NULL,
+	 "Cannot open file ''settings.cfg''\n\n"
+	 "Standart text of this file:\n\n"
+	 "	planet_count=10\n"
+	 "	with_traectory=0\n"
+	 "	sol_power=10000\n"
+	 "	look_distance=2000\n"
+	 "	detalization=10\n"
+	 "	rotateX=45\n"
+	 "	rotateY=0\n"
+	 "	rotateZ=0\n"
+	 "","Error",MB_OK);
+
+
+	 exit(0);
+	}
+
+int temp;
+fscanf(fp,
+	    "planet_count=%d\n"
+		"with_traectory=%d\n"
+		"sol_power=%d\n"
+		"look_distance=%d\n"
+		"detalization=%d\n"
+		"rotateX=%d\n"
+		"rotateY=%d\n"
+		"rotateZ=%d",
+		
+		&kolplanet,
+		&WithTraectory,
+		&temp,
+		&RRR,
+		&detalization,
+		&rotateX,
+		&rotateY,
+		&rotateZ);
+
+KOEFFICIENT=temp;
+
+if(kolplanet>1000) kolplanet=1000;
+if(detalization>30) detalization=30;
+if(detalization<3) detalization=3;
+if(feof(fp)) fclose(fp);
+
+fclose(fp);
+}
+*/
+
+
